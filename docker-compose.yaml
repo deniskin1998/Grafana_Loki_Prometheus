@@ -1,0 +1,93 @@
+version: "3"
+
+networks:
+  loki:
+
+volumes:
+  prom-data:
+  prom-configs:
+
+
+services:
+  loki:
+    image: grafana/loki:latest
+    volumes:
+      - /home/loki/production:/home/loki/production
+    ports:
+      - "3100:3100"
+    command: -config.file=/home/loki/production/loki.yaml
+    networks:
+      - loki
+
+  promtail:
+    image: grafana/promtail:2.4.2
+    volumes:
+      - /home/loki/production/promtail-conf.yaml:/etc/promtail/test-conf.yaml
+      - /var/log:/var/log
+      - /var/lib/docker/containers:/var/lib/docker/containers
+    ports:
+      - 9080:9080
+    command: -config.file=/etc/promtail/test-conf.yaml
+#config.yml
+    networks:
+      - loki
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    networks:
+      - loki
+
+  minio:
+    image: minio/minio:latest
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    networks:
+      - loki
+    command: server ~ --address ':9000' --console-address ':9001'
+
+  createbuckets:
+    image: minio/mc
+    networks:
+      - loki
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+      /usr/bin/mc config host add myminio http://minio:9000 minioadmin minioadmin;
+      /usr/bin/mc rm -r --force myminio/loki;
+      /usr/bin/mc mb myminio/loki;
+      /usr/bin/mc policy set public myminio/loki;
+      exit 0;
+      "
+
+  prometheus:
+    image: prom/prometheus:v2.36.0
+    ports:
+      - "9090:9090"
+    volumes:
+      - prom-data:/prometheus
+      - prom-configs:/etc/prometheus
+    networks:
+      - loki
+
+  node-exporter:
+    image: prom/node-exporter:v1.3.1
+    ports:
+      - "9100:9100"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude'
+      - '^/(sys|proc|dev|host|etc|rootfs/var/lib/docker/containers|rootfs/var/lib/docker/overlay2|rootfs/run/docker/netns|rootfs/var/lib/docker/aufs)($$|/)'
+    networks:
+      - loki
+
+
+
