@@ -11,8 +11,8 @@ route:
 receivers:
 - name: 'telegram'
   telegram_configs:
-  - bot_token: "7144104961:AAF9dgfeBebigPnsSAM3BWQYQwji5OY8vFs"
-    chat_id: -4097674153
+  - bot_token: ""
+    chat_id: 
 
 #  https://api.telegram.org/botINSERT_BOT_ID_HERE/getUpdates - to get chat_id
 #  amtool --alertmanager.url=http://localhost:9093/ alert add alertname="Test alert" severity="warning" job="test-job" - to send test alert
